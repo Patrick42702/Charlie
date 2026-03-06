@@ -439,8 +439,7 @@ public class Dealer implements Serializable {
             
             // Tell everyone what happened
             for (IPlayer _player : playerSequence)
-                _player.charlie(hid);
-            
+                _player.blackjack(hid);
             goNextHand();
         }
         // Player has 21: don't force player to break!
@@ -615,32 +614,48 @@ public class Dealer implements Serializable {
                     Card card = deal(); 
                     
                     hand.hit(card);
-                    
+
                     firstSplitHit = true;
                 }catch(InterruptedException ex){
                     LOG.error(ex.getMessage());
                 }
             }
 
-            // Unless the player got a isBlackjack, tell the player they're
-            // to start playing this hand
+            // Loop through players to announce plays
             for (IPlayer player: playerSequence) {
                 
-                // If the hand is a split, lets tell everyone a deal happened.
-                // Do this here to prevent using the same 'for loop' twice.
-                if(firstSplitHit){
-                    // tell players about hit
+                // If the hand is a split and the outcome on the 2nd hand is a blackjack,
+                // we need to simulate the blackjack outcome without calling this.hit()
+                if (firstSplitHit && hand.isBlackjack()) {
+
+                    // tell players about hit and trigger blackjack outcome
                     player.deal(hid, hand.getCard(1), hand.getValues());
+                    hid.request(Play.STAY);
+
+                    updateBankroll(hid,BLACKJACK_PAYS);
+
+                    // Tell everyone what happened
+                    for (IPlayer _player : playerSequence)
+                        _player.blackjack(hid);
+                    goNextHand();
                 }
-                
-                LOG.info("sending turn "+hid+" to "+player);
-                player.play(hid);
+                else {
+                    // If the hand is a split, lets tell everyone a deal happened.
+                    // Do this here to prevent using the same 'for loop' twice.
+                    if(firstSplitHit) {
+                        // tell players about hit
+                        player.deal(hid, hand.getCard(1), hand.getValues());
+                    }
+                    LOG.info("sending turn "+hid+" to "+player);
+                    player.play(hid);
+                }
             }
         }
-        else
+        else {
             // If there are no more hands, close out game with dealer
             // making last play.
             closeGame();
+        }
     }
     
     protected void closeGame() { 
