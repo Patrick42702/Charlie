@@ -621,35 +621,33 @@ public class Dealer implements Serializable {
                 }
             }
 
-            // Loop through players to announce plays
-            for (IPlayer player: playerSequence) {
-                
-                // If the hand is a split and the outcome on the 2nd hand is a blackjack,
-                // we need to simulate the blackjack outcome without calling this.hit()
-                if (firstSplitHit && hand.isBlackjack()) {
+          // Loop through players to announce plays
+          for (IPlayer player : playerSequence) {
 
-                    // tell players about hit and trigger blackjack outcome
-                    player.deal(hid, hand.getCard(1), hand.getValues());
-                    hid.request(Play.STAY);
+            // if this is the first hit of a split, announce deal to players
+            if (firstSplitHit) {
 
-                    updateBankroll(hid,BLACKJACK_PAYS);
+              player.deal(hid, hand.getCard(1), hand.getValues());
 
-                    // Tell everyone what happened
-                    for (IPlayer _player : playerSequence)
-                        _player.blackjack(hid);
-                    goNextHand();
+              // if this hit results in a blackjack, simulate blackjack outcome
+              // and announce to players
+              if (hand.isBlackjack()) {
+                hid.request(Play.STAY);
+
+                updateBankroll(hid, BLACKJACK_PAYS);
+
+                for (IPlayer _player : playerSequence) {
+                  _player.blackjack(hid);
                 }
-                else {
-                    // If the hand is a split, lets tell everyone a deal happened.
-                    // Do this here to prevent using the same 'for loop' twice.
-                    if(firstSplitHit) {
-                        // tell players about hit
-                        player.deal(hid, hand.getCard(1), hand.getValues());
-                    }
-                    LOG.info("sending turn "+hid+" to "+player);
-                    player.play(hid);
-                }
+
+                // Hand is over with a blackjack
+                goNextHand();
+                continue;
+              }
             }
+            LOG.info("sending turn " + hid + " to " + player);
+            player.play(hid);
+          }
         }
         else {
             // If there are no more hands, close out game with dealer
